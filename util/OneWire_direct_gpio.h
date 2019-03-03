@@ -105,16 +105,62 @@
 // resolve any problems related to ESP chips.  Please do not contact me and please
 // DO NOT CREATE GITHUB ISSUES for ESP support.  All ESP questions must be asked
 // on ESP community forums.
-#define PIN_TO_BASEREG(pin)             ((volatile uint32_t*) GPO)
+#define PIN_TO_BASEREG(pin)             (0)
 #define PIN_TO_BITMASK(pin)             (1 << pin)
 #define IO_REG_TYPE uint32_t
 #define IO_REG_BASE_ATTR
 #define IO_REG_MASK_ATTR
-#define DIRECT_READ(base, mask)         ((GPI & (mask)) ? 1 : 0)    //GPIO_IN_ADDRESS
-#define DIRECT_MODE_INPUT(base, mask)   (GPE &= ~(mask))            //GPIO_ENABLE_W1TC_ADDRESS
-#define DIRECT_MODE_OUTPUT(base, mask)  (GPE |= (mask))             //GPIO_ENABLE_W1TS_ADDRESS
-#define DIRECT_WRITE_LOW(base, mask)    (GPOC = (mask))             //GPIO_OUT_W1TC_ADDRESS
-#define DIRECT_WRITE_HIGH(base, mask)   (GPOS = (mask))             //GPIO_OUT_W1TS_ADDRESS
+
+static inline __attribute__((always_inline))
+IO_REG_TYPE directRead(IO_REG_TYPE mask)
+{
+	if (mask < (1<<16))
+		return ((GPI & (mask)) ? 1 : 0);
+	else
+		return (GP16I & 0x01);
+}
+
+static inline __attribute__((always_inline))
+void directWriteLow(IO_REG_TYPE mask)
+{
+	if (mask < (1<<16))
+		GPOC = mask;
+	else
+		GP16O &= ~0x01;
+}
+
+static inline __attribute__((always_inline))
+void directWriteHigh(IO_REG_TYPE mask)
+{
+	if (mask < (1<<16))
+		GPOS = mask;
+	else
+		GP16O |= 0x01;
+}
+
+static inline __attribute__((always_inline))
+void directModeInput(IO_REG_TYPE mask)
+{
+	if (mask < (1<<16))
+		GPEC = mask;
+	else
+		GP16E &= ~0x01;
+}
+
+static inline __attribute__((always_inline))
+void directModeOutput(IO_REG_TYPE mask)
+{
+	if (mask < (1<<16))
+		GPES = mask;
+	else
+		GP16E |= 0x01;
+}
+
+#define DIRECT_READ(base, mask)          directRead(mask)
+#define DIRECT_WRITE_LOW(base, mask)     directWriteLow(mask)
+#define DIRECT_WRITE_HIGH(base, mask)    directWriteHigh(mask)
+#define DIRECT_MODE_INPUT(base, mask)    directModeInput(mask)
+#define DIRECT_MODE_OUTPUT(base, mask)   directModeOutput(mask)
 
 #elif defined(ARDUINO_ARCH_ESP32)
 #include <driver/rtc_io.h>
